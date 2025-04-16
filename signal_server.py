@@ -47,7 +47,7 @@ API_SECRET = os.getenv('BINANCE_API_SECRET')
 # ===================
 # Define the RPC URL and Chainlink oracle contract details
 # ===================
-RPC_URL = "https://polygon.meowrpc.com"  # Replace with your RPC endpoint
+RPC_URL = "https://polygon-bor-rpc.publicnode.com"  # Replace with your RPC endpoint
 CHAINLINK_ORACLE_ADDRESS = "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0"  # Example: MATIC/USD on Polygon
 CHAINLINK_ABI = [
     {
@@ -65,6 +65,7 @@ CHAINLINK_ABI = [
     }
 ]
 
+web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 price_data = []  # Store recent price data for indicators
 
