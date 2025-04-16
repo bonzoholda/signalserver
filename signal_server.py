@@ -16,11 +16,22 @@ from binance.enums import *
 import requests
 import gc
 
+# 🔁 ADD THIS near the top with the other imports:
+from threading import Thread
+
 session = requests.Session()
 # Use the session
 session.close()  # Release resources
 
 app = FastAPI()
+
+# 🔁 ADD THIS near the top, just after FastAPI init:
+latest_signal = {
+    "pair": "POLUSDT",
+    "signal": "initializing",
+    "price": None,
+    "timestamp": None
+}
 
 # ===================
 # Load environment variables from .env file
@@ -270,37 +281,62 @@ def generate_signals(df, local_window=5):
     print("Signals generated based on local extremes and reversals.")
     return df
 
+###############
+# 🔁 ADD THIS function at the bottom, before the route definitions:
+def signal_loop():
+    global latest_signal
+    while True:
+        try:
+            pair = "POLUSDT"
+            price = fetch_price()
 
-@app.get("/")
-def root():
-    return {"status": "Signal Server is running"}
+            df = get_historical_data(pair)
+            if df.empty:
+                print("No data.")
+                time.sleep(15)
+                continue
 
+            df = update_historical_data(df, pair)
+            df_signal = generate_signals(df)
+            last_signal = df_signal.iloc[-1]['signal_type']
+
+            df_rsi = generate_signals_with_rsi_divergence(df)
+            dvg_signal = df_rsi.iloc[-1]['divergence_type']
+
+            if last_signal == 'buy' or dvg_signal == 'bullish':
+                signal = 'long'
+            elif last_signal == 'sell' or dvg_signal == 'bearish':
+                signal = 'short'
+            else:
+                signal = 'no-signals'
+
+            latest_signal = {
+                "pair": pair,
+                "signal": signal,
+                "price": price,
+                "timestamp": int(time.time())
+            }
+
+            print(f"[SIGNAL UPDATE] {signal} @ {price}")
+        except Exception as e:
+            print(f"[Signal Loop Error] {e}")
+        time.sleep(15)
+
+# 🔁 RUN BACKGROUND LOOP ON STARTUP:
+@app.on_event("startup")
+def start_signal_thread():
+    Thread(target=signal_loop, daemon=True).start()
+
+# ✅ MODIFY `/api/signal` to just return the cached result
 @app.get("/api/signal")
-def get_signal(pair: str = "POLUSDT"):
-    # Simulated signal logic (replace with real TA logic)
+def get_signal():
+    return latest_signal
 
-    current_price = fetch_price()
+##########################
 
-    historical_data = get_historical_data()
-    df = update_historical_data(historical_data)
-    df_with_signals = generate_signals(df)
-    latest_signal = df_with_signals.iloc[-1]['signal_type']
-    last_signal = latest_signal
-        
-    df_withRSIdvg = generate_signals_with_rsi_divergence(df)
-    confirmed_signal = df_withRSIdvg.iloc[-1]['divergence_type']
-    dvg_signal = confirmed_signal
-    
-    if (last_signal == 'buy' or dvg_signal == 'bullish'):
-        signal = 'long'
-    elif (last_signal == 'sell' or dvg_signal== 'bearish' ):
-        signal = 'short'
-    else :
-        signal = 'no-signals'
+#    return JSONResponse({
+#        "pair": pair.upper(),
+#        "signal": signal,
+#        "price": current_price,
+#        "timestamp": int(time.time())
 
-    return JSONResponse({
-        "pair": pair.upper(),
-        "signal": signal,
-        "price": current_price,
-        "timestamp": int(time.time())
-    })
