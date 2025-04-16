@@ -2,7 +2,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 import random
 import time
-
+import os
 import numpy as np
 import pandas as pd
 from web3 import Web3
