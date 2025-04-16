@@ -331,13 +331,6 @@ def start_signal_thread():
 # ✅ MODIFY `/api/signal` to just return the cached result
 @app.get("/api/signal")
 def get_signal():
-    return latest_signal
-
-##########################
-
-#    return JSONResponse({
-#        "pair": pair.upper(),
-#        "signal": signal,
-#        "price": current_price,
-#        "timestamp": int(time.time())
+    #return latest_signal
+     return JSONResponse(latest_signal)
 
